@@ -1,0 +1,29 @@
+# action.yml
+name: "Terraform + Checkov CI"
+description: "Runs checkov on terraform plan and pretty prints results to comment"
+inputs:
+  terraform_version:
+    description: "Terraform version, defaults to install latest"
+    required: false
+    default: "latest"
+  terraform_host:
+    description: "The hostname of a Terraform Cloud/Enterprise instance to place within the credentials block of the Terraform CLI configuration file. Defaults to `app.terraform.io`."
+    default: "app.terraform.io"
+    required: false
+  terraform_token:
+    description: "The API token for a Terraform Cloud/Enterprise instance to place within the credentials block of the Terraform CLI configuration file."
+    default: ""
+    required: false
+  working_directory:
+    default: "."
+    required: false
+    description: "Github actions can't inherit working-directory. Set it here."
+
+runs:
+  using: "docker"
+  image: "Dockerfile"
+  env:
+    TF_VERSION: ${{ inputs.terraform_version }}
+    TF_HOST: ${{ inputs.terraform_host }}
+    TF_TOKEN: ${{ inputs.terraform_token }}
+    WORKING_DIRECTORY: ${{ inputs.working_directory }}
