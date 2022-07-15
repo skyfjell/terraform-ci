@@ -4,6 +4,16 @@ cd $WORKING_DIRECTORY
 
 TMP_DIR=${TMP_DIR:-/app}
 
+export FORMAT_CHECK="failure"
+export INIT_CHECK="failure"
+export PLAN_CHECK="failure"
+export CHECKOV_CHECK="failure"
+export LOG_PATH=$TMP_DIR/tfplan.log
+export PLAN_PATH=$TMP_DIR/tfplan.json
+export CHECKOV_PATH=$TMP_DIR/results_json.json
+export APPLY_PATH=$TMP_DIR/tfapply.json
+export APPLY_MARKDOWN=$TMP_DIR/SUMMARY.md
+
 # create terraform environment
 if [[ "$TF_VERSION" == "latest"  || "$TF_VERSION" == "" ]];
 then
@@ -13,7 +23,7 @@ else
 fi
 
 # setup configuration file if token is passed
-if [[ "TF_TOKEN" != "" ]];
+if [[ "$TF_TOKEN" != "" ]];
 then
     
     cat <<EOT > ~/.terraformrc
@@ -21,109 +31,85 @@ credentials "${TF_HOST}" {
     token = "${TF_TOKEN}"
 }
 EOT
-    
     echo "Created .terraformrc file."
-    
 fi
 
 # format check
 terraform fmt -check -recursive
 if [[ $? == 0 ]];
 then
-    FORMAT_CHECK='success'
-else
-    FORMAT_CHECK='failure'
+    FORMAT_CHECK="success"
 fi
 
 # initialize terraform
-terraform init
+if [[ "$TF_INIT" == "migrate" ]];
+then
+    terraform init -migrate-state
+elif [[ "$TF_INIT" == "reconfigure" ]];
+then
+    terraform init -reconfigure
+else
+    terraform init
+fi
+
 if [[ $? == 0 ]];
 then
-    INIT_CHECK='success'
-else
-    INIT_CHECK='failure'
+    INIT_CHECK="success"
 fi
 
 # run plan
-terraform plan -input=false -no-color -out $TMP_DIR/tfplan.binary 2>&1 | tee $TMP_DIR/tfplan.log
-if [[ $? == 0 ]];
+
+IFS="," read -ra ARY <<< "$TF_REPLACE"
+CMDARR=("terraform" "plan" "-input=false" "-no-color" "-out" "$TMP_DIR/tfplan.binary")
+for i in "${ARY[@]}"; do
+    CMDARR+=( -replace="$i" )
+done
+
+command "${CMDARR[@]}" 2>&1 | tee $LOG_PATH
+if [[ -f "$TMP_DIR/tfplan.binary" ]];
 then
-    PLAN_CHECK='success'
-else
-    PLAN_CHECK='failure'
+    PLAN_CHECK="success"
+
+    # convert to json
+    terraform show -json -no-color $TMP_DIR/tfplan.binary | jq '.' > $PLAN_PATH
 fi
 
-# convert to json
-terraform show -json -no-color $TMP_DIR/tfplan.binary | jq '.' > $TMP_DIR/tfplan.json
-
-# run checkov
-LOG_LEVEL=ERROR checkov --output-file-path $TMP_DIR -o json -f $TMP_DIR/tfplan.json
-
-CHECKOV_FAILED=$(cat $TMP_DIR/results_json.json | jq '.summary | .failed')
-if [[ $CHECKOV_FAILED == 0 ]];
+# Is this a tag release?
+if [[ "$GITHUB_REF_TYPE" == "tag" ]];
 then
-    CHECKOV_CHECK='success'
+    terraform apply -auto-approve -no-color -json $TMP_DIR/tfplan.binary > $APPLY_PATH
+    python3 $TMP_DIR/main.py apply
+
 else
-    CHECKOV_CHECK='failure'
+    if [[ -f "$TMP_DIR/tfplan.binary" ]];
+    then
+        # run checkov if plan was successful
+        LOG_LEVEL=ERROR checkov --output-file-path $TMP_DIR -o json -f $PLAN_PATH
+        # test for multiple tests
+        if [[ $(cat $CHECKOV_PATH | jq -r 'type') == "object" ]];
+        then
+            result_array=$(cat $CHECKOV_PATH | jq  '. | [.] ')
+        else
+            result_array=$(cat $CHECKOV_PATH)
+        fi
+
+        if [[ $(jq '[.[] | .summary.failed ] | add' <<< $result_array) == 0 ]];
+        then
+            CHECKOV_CHECK="success"
+        fi
+    fi
+    # formatted outputs
+    python3 $TMP_DIR/main.py plan
+
+    input=$APPLY_MARKDOWN
+    while IFS= read -r line
+    do
+        echo "$line" >> $GITHUB_STEP_SUMMARY
+    done < "$input"
+
+
+    echo "::set-output name=fmtcheck::${FORMAT_CHECK}"
+    echo "::set-output name=initcheck::${INIT_CHECK}"
+    echo "::set-output name=plancheck::${PLAN_CHECK}"
+    echo "::set-output name=checkovcheck::${CHECKOV_CHECK}"
 fi
-
-# formatted outputs
-python3 $TMP_DIR/main.py -f $TMP_DIR/tfplan.log -o $TMP_DIR/summary.txt -t log
-python3 $TMP_DIR/main.py -f $TMP_DIR/results_json.json -o $TMP_DIR/checkov.md -t scan
-python3 $TMP_DIR/main.py -f $TMP_DIR/tfplan.json -o $TMP_DIR/tfplan.md -t plan
-
-PPRINTOUT=$(cat <<EOT 
-### Step Checks
-#### Terraform Format and Style 🖌`${FORMAT_CHECK}`
-#### Terraform Initialization ⚙️`${INIT_CHECK}`
-#### Terraform Plan 📖`${PLAN_CHECK}`
-#### Checkov Plan 🤖`${CHECKOV_CHECK}`
-
-### Terraform Plan
-
-$(cat $TMP_DIR/tfplan.md)
-
-<details><summary>Plan Summary</summary>
-
-```
-$(cat $TMP_DIR/summary.txt)
-```
-
-</details>
-
-### Checkov Scan
-
-$(cat $TMP_DIR/checkov.md)
-EOT
-)
-
-echo "$PPRINTOUT" >> $GITHUB_STEP_SUMMARY
-
-PPRINTOUT="${PPRINTOUT//'%'/'%25'}"
-PPRINTOUT="${PPRINTOUT//$'\n'/'%0A'}"
-PPRINTOUT="${PPRINTOUT//$'\r'/'%0D'}"
-
-PLANOUT=$(cat $TMP_DIR/tfplan.md)
-PLANOUT="${PLANOUT//'%'/'%25'}"
-PLANOUT="${PLANOUT//$'\n'/'%0A'}"
-PLANOUT="${PLANOUT//$'\r'/'%0D'}"
-
-SUMMARYOUT=$(cat $TMP_DIR/summary.txt)
-SUMMARYOUT="${SUMMARYOUT//'%'/'%25'}"
-SUMMARYOUT="${SUMMARYOUT//$'\n'/'%0A'}"
-SUMMARYOUT="${SUMMARYOUT//$'\r'/'%0D'}"
-
-SCANOUT=$(cat $TMP_DIR/checkov.md)
-SCANOUT="${SCANOUT//'%'/'%25'}"
-SCANOUT="${SCANOUT//$'\n'/'%0A'}"
-SCANOUT="${SCANOUT//$'\r'/'%0D'}"
-
-echo "::set-output name=fmtcheck::${FORMAT_CHECK}"
-echo "::set-output name=initcheck::${INIT_CHECK}"
-echo "::set-output name=plancheck::${PLAN_CHECK}"
-echo "::set-output name=checkovcheck::${CHECKOV_CHECK}"
-echo "::set-output name=plan::${PLANOUT}"
-echo "::set-output name=summary::${SUMMARYOUT}"
-echo "::set-output name=scan::${SCANOUT}"
-echo "::set-output name=pprint::${PPRINTOUT}"
-

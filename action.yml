@@ -14,11 +14,26 @@ inputs:
     description: "The API token for a Terraform Cloud/Enterprise instance to place within the credentials block of the Terraform CLI configuration file."
     default: ""
     required: false
+  terraform_init:
+    description: "Terraform init option. Run with 'migrate' for `-migrate-state` or 'reconfigure' for `reconfigure`. All other options will result in regular `terraform init`."
+    default: ""
+    required: false
+  terraform_replace_resources:
+    default: ""
+    required: false
+    description: "Comma separated list of resource addresses to run `terraform apply -replace=<item1>`"
   working_directory:
     default: "."
     required: false
     description: "Github actions can't inherit working-directory. Set it here."
-
+  mode:
+    default: "plan"
+    required: false
+    description: "Plan or Apply mode. If plan, will update github job summary with results. If apply, will run on a tag and auto generate a release with results as the notes."
+  github_token:
+    default: "."
+    required: false
+    description: "For applies, needed to update the releases after tagging"
 runs:
   using: "docker"
   image: "Dockerfile"
@@ -26,4 +41,8 @@ runs:
     TF_VERSION: ${{ inputs.terraform_version }}
     TF_HOST: ${{ inputs.terraform_host }}
     TF_TOKEN: ${{ inputs.terraform_token }}
+    TF_INIT: ${{ inputs.terraform_init }}
+    TF_REPLACE: ${{ inputs.terraform_replace_resources }}
     WORKING_DIRECTORY: ${{ inputs.working_directory }}
+    ACTION_MODE: ${{ inputs.mode }}
+    GITHUB_TOKEN: ${{ inputs.github_token }}
