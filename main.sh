@@ -65,7 +65,12 @@ for i in "${ARY[@]}"; do
     CMDARR+=( -replace="$i" )
 done
 
+# Run with xtrace
+set -x;
 command "${CMDARR[@]}" 2>&1 | tee $LOG_PATH
+set +x;
+
+
 if [[ -f "$TMP_DIR/tfplan.binary" ]];
 then
     PLAN_CHECK="success"
