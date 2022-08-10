@@ -112,9 +112,13 @@ else
         echo "$line" >> $GITHUB_STEP_SUMMARY
     done < "$input"
 
-
     echo "::set-output name=fmtcheck::${FORMAT_CHECK}"
     echo "::set-output name=initcheck::${INIT_CHECK}"
     echo "::set-output name=plancheck::${PLAN_CHECK}"
     echo "::set-output name=checkovcheck::${CHECKOV_CHECK}"
+
+    if [[ "$FORMAT_CHECK" == "failure" || "$INIT_CHECK" == "failure" || "$PLAN_CHECK" == "failure" || "$CHECKOV_CHECK" == "failure" ]];
+    then
+        exit 1;
+    fi
 fi
