@@ -48,6 +48,9 @@ then
 elif [[ "$TF_INIT" == "reconfigure" ]];
 then
     terraform init -reconfigure
+elif [[ "$TF_INIT" == "upgrade" ]];
+then
+    terraform init -upgrade
 else
     terraform init
 fi
@@ -83,7 +86,19 @@ fi
 if [[ "$GITHUB_REF_TYPE" == "tag" ]];
 then
     terraform apply -auto-approve -no-color -json $TMP_DIR/tfplan.binary > $APPLY_PATH
+
+    APPLY_CHECK="failure"
+    if [[ $? == 0 ]];
+    then
+        APPLY_CHECK="success"
+    fi
+
     python3 $TMP_DIR/main.py apply
+
+    if [[ "$APPLY_CHECK" == "failure" ]];
+    then
+        exit 1;
+    fi
 
 else
     if [[ -f "$TMP_DIR/tfplan.binary" ]];
