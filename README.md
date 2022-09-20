@@ -5,7 +5,7 @@ Runs Checkov on Terraform plans during pull requests and pretty prints output on
 ## Example Plan usage
 
 ```yaml
-uses: skyfjell/tf-checkov-action@latest
+uses: skyfjell/terraform-ci@latest
 with:
   terraform_token: ${{ secrets.TF_API_TOKEN }}
 ```
@@ -103,7 +103,7 @@ jobs:
       uses: actions/checkout@master
     - name: Scans, Plans and More!
       id: terraform-ci
-      uses: skyfjell/tf-checkov-action@latest
+      uses: skyfjell/terraform-ci@latest
       with:
         terraform_token: ${{ secrets.TF_API_TOKEN }}
         github_token: ${{ secrets.GITHUB_TOKEN }}
