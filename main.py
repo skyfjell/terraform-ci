@@ -252,6 +252,7 @@ def post_apply_output(summary: str) -> str:
     GITHUB_REF_NAME = os.environ["GITHUB_REF_NAME"]
     GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
     GITHUB_RUN_ID = os.environ["GITHUB_RUN_ID"]
+
     if len(summary) >= 125000:
         os.environ["GITHUB_STEP_SUMMARY"] = os.environ.get("GITHUB_STEP_SUMMARY", "") + summary
         summary = f"Release text too large, see plan summary from job at https://github.com/{GITHUB_REPOSITORY_NAME}/actions/runs/{GITHUB_RUN_ID}"

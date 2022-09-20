@@ -85,9 +85,9 @@ fi
 # Is this a tag release?
 if [[ "$GITHUB_REF_TYPE" == "tag" ]];
 then
-    terraform apply -auto-approve -no-color -json $TMP_DIR/tfplan.binary > $APPLY_PATH
-
     APPLY_CHECK="failure"
+
+    terraform apply -auto-approve -no-color -json $TMP_DIR/tfplan.binary > $APPLY_PATH
     if [[ $? == 0 ]];
     then
         APPLY_CHECK="success"
