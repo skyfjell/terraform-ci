@@ -7,7 +7,7 @@ import requests
 
 from .parser import parse_tf_json, parse_tf_log, parse_tf_checkov, parse_tf_apply, parse_tf_apply_summary
 from .terraform import TfCLI
-from .config import get_env, ImportConfig, ActionSettings
+from .config import get_env, ActionSettings
 from . import __issues__, __version__
 
 
@@ -97,7 +97,7 @@ class ActionPipeline:
         """
         init_args = ["init"]
 
-        match self.settings.mode:
+        match self.settings.terraform.init_mode:
             case "migrate":
                 init_args += ["-migrate-state"]
             case "reconfigure":
@@ -227,7 +227,7 @@ class ActionPipeline:
                 except Exception as e:
                     print(f"::error title=Github Post::Failed to post release because: {e}.")
 
-        os.environ["GITHUB_STEP_SUMMARY"] += os.environ.get("GITHUB_STEP_SUMMARY", "") + template
+        os.environ["GITHUB_STEP_SUMMARY"] = os.environ.get("GITHUB_STEP_SUMMARY", "") + template
 
         return self
 

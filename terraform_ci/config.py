@@ -1,11 +1,10 @@
 from typing import Dict, Literal, Any
-from pydantic import BaseModel, BaseSettings, Field, validator, root_validator
+from pydantic import BaseModel, BaseSettings, Field, validator
 from pydantic.env_settings import SettingsSourceCallable
 from re import sub
 import os
 import sys
 import yaml
-import json
 
 
 def coerce_empty(val: str | None) -> str | None:
@@ -59,13 +58,13 @@ class TerraformConfig(BaseSchema):
             sys.exit(1)
         return value
 
-    _validate_token = validator('token', pre=True)(coerce_empty)
+    _validate_token = validator('token', pre=True, allow_reuse=True)(coerce_empty)
 
 
 class GithubConfig(BaseSchema):
     token: str | None
 
-    _validate_token = validator('token', pre=True)(coerce_empty)
+    _validate_token = validator('token', pre=True, allow_reuse=True)(coerce_empty)
 
 
 class ImportConfig(BaseSchema):
@@ -109,8 +108,8 @@ class ActionSettings(BaseSchema):
     github: GithubConfig = Field(GithubConfig())
     resource: ResourceConfig = Field(ResourceConfig())
 
-    _validate_working_directory = validator('working_directory', pre=True)(coerce_empty)
-    _validate_create_release = validator('create_release', pre=True)(coerce_empty)
+    _validate_working_directory = validator('working_directory', pre=True, allow_reuse=True)(coerce_empty)
+    _validate_create_release = validator('create_release', pre=True, allow_reuse=True)(coerce_empty)
 
     @validator("mode")
     def v_mode(cls, value):
@@ -128,7 +127,7 @@ def load_experimental(settings: BaseSettings) -> Dict[str, Any]:
             return {"config": yaml.safe_load(raw)}
     except Exception as e:
         print(f"::warning title=Experimental Config::Could not load config file, using defaults. Reason:{e}.")
-    return {}
+    return {"config": {}}
 
 
 class Settings(BaseSettings):
