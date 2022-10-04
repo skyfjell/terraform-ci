@@ -22,6 +22,9 @@ inputs:
     default: ""
     required: false
     description: "Comma separated list of resource addresses to run `terraform apply -replace=<item1>`"
+  terraform_import_resource:
+    default: ""
+    description: "Comma separated list of resource addresses to run `terraform import <addr> <id>`"
   working_directory:
     default: "."
     required: false
@@ -30,19 +33,54 @@ inputs:
     default: "plan"
     required: false
     description: "Plan or Apply mode. If plan, will update github job summary with results. If apply, will run on a tag and auto generate a release with results as the notes."
+  create_release:
+    default: ""
+    required: false
+    description: "For applies, create a release with tag or sha (if configured for branch)"
   github_token:
     default: "."
     required: false
     description: "For applies, needed to update the releases after tagging"
+  config:
+    default: ""
+    required: false
+    description: |
+      Experimental - Github actions only supports string inputs, but if you format a yaml string, this action will parse it.  Direct variables will
+      take precedence.
+
+      ```yaml
+      with:
+        config:
+          mode: plan
+          workingDirectory: "."
+          createRelease: false
+          terraform:
+            version: latest
+            host: app.terraform.io
+            token: "Please use env var"
+            initMode: upgrade
+          github:
+            token: "Please use env var"
+          resources:
+            import:
+              - address: |
+                  module.test["resource"]
+                id: "abcd123a"
+            replace:
+              - ""
+      ```
 runs:
   using: "docker"
   image: "Dockerfile"
   env:
-    TF_VERSION: ${{ inputs.terraform_version }}
-    TF_HOST: ${{ inputs.terraform_host }}
-    TF_TOKEN: ${{ inputs.terraform_token }}
-    TF_INIT: ${{ inputs.terraform_init }}
-    TF_REPLACE: ${{ inputs.terraform_replace_resources }}
-    WORKING_DIRECTORY: ${{ inputs.working_directory }}
-    ACTION_MODE: ${{ inputs.mode }}
-    GITHUB_TOKEN: ${{ inputs.github_token }}
+    CONFIG__TERRAFORM__VERSION: ${{ inputs.terraform_version }}
+    CONFIG__TERRAFORM__HOST: ${{ inputs.terraform_host }}
+    CONFIG__TERRAFORM__TOKEN: ${{ inputs.terraform_token }}
+    CONFIG__TERRAFORM__INIT_MODE: ${{ inputs.terraform_init }}
+    CONFIG__RESOURCE__REPLACE: ${{ inputs.terraform_replace_resources }}
+    CONFIG__RESOURCE__IMPORTS: ${{ inputs.terraform_import_resource }}
+    CONFIG__WORKING_DIRECTORY: ${{ inputs.working_directory }}
+    CONFIG__MODE: ${{ inputs.mode }}
+    CONFIG__GITHUB__TOKEN: ${{ inputs.github_token }}
+    CONFIG__CREATE_RELEASE: ${{ inputs.create_release }}
+    YAML_CONFIG: ${{ inputs.config }}
