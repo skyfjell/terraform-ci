@@ -1,11 +1,11 @@
 from typing import Dict, Literal, Any
-from pydantic import BaseModel, BaseSettings, Field, validator, root_validator
+from pydantic import BaseModel, BaseSettings, Field, validator
+from pydantic.validators import str_validator
 from pydantic.env_settings import SettingsSourceCallable
 from re import sub
 import os
 import sys
 import yaml
-import json
 
 
 def coerce_empty(val: str | None) -> str | None:
@@ -13,6 +13,13 @@ def coerce_empty(val: str | None) -> str | None:
         if val.strip() == "":
             return None
     return val
+
+
+class GithubStr(str):
+    @classmethod
+    def __get_validators__(cls):
+        yield str_validator
+        yield coerce_empty
 
 
 def get_env(name: str) -> str | None:
@@ -45,9 +52,9 @@ class BaseSchema(BaseModel):
 
 
 class TerraformConfig(BaseSchema):
-    version: str | None = Field("latest")
-    host: str | None = Field("app.terraform.io")
-    token: str | None
+    version: GithubStr | None
+    host: GithubStr | None = Field("app.terraform.io")
+    token: GithubStr | None
     init_mode: Literal["migrate"] | Literal["reconfigure"] | Literal["upgrade"] | None
 
     @validator("init_mode", pre=True)
@@ -59,13 +66,9 @@ class TerraformConfig(BaseSchema):
             sys.exit(1)
         return value
 
-    _validate_token = validator('token', pre=True)(coerce_empty)
-
 
 class GithubConfig(BaseSchema):
-    token: str | None
-
-    _validate_token = validator('token', pre=True)(coerce_empty)
+    token: GithubStr | None
 
 
 class ImportConfig(BaseSchema):
@@ -103,16 +106,13 @@ class ResourceConfig(BaseSchema):
 
 class ActionSettings(BaseSchema):
     mode: Literal["plan"] | Literal["apply"] = Field("plan")
-    working_directory: str = Field(".")
-    create_release: bool | None = Field(False)
-    terraform: TerraformConfig = Field(TerraformConfig())
-    github: GithubConfig = Field(GithubConfig())
-    resource: ResourceConfig = Field(ResourceConfig())
+    working_directory: GithubStr = Field(".")
+    create_release: bool | GithubStr | None = Field(False)
+    terraform: TerraformConfig
+    github: GithubConfig
+    resource: ResourceConfig
 
-    _validate_working_directory = validator('working_directory', pre=True)(coerce_empty)
-    _validate_create_release = validator('create_release', pre=True)(coerce_empty)
-
-    @validator("mode")
+    @validator("mode", pre=True)
     def v_mode(cls, value):
         if value is None or value.strip() == "":
             return "plan"
@@ -128,7 +128,7 @@ def load_experimental(settings: BaseSettings) -> Dict[str, Any]:
             return {"config": yaml.safe_load(raw)}
     except Exception as e:
         print(f"::warning title=Experimental Config::Could not load config file, using defaults. Reason:{e}.")
-    return {}
+    return {"config": {}}
 
 
 class Settings(BaseSettings):
@@ -145,4 +145,4 @@ class Settings(BaseSettings):
             file_secret_settings: SettingsSourceCallable,
         ) -> tuple[SettingsSourceCallable, ...]:
             """Prioritize ENV settings"""
-            return env_settings, load_experimental, init_settings, file_secret_settings
+            return load_experimental, env_settings, init_settings, file_secret_settings

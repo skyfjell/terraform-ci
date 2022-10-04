@@ -1,4 +1,4 @@
-# Terraform CI Action[^1]
+# Terraform CI Action
 
 ## Step Checks
 
@@ -26,4 +26,4 @@
 
 {{ checkov_txt }}
 
-[^1]: `terraform-ci v{{ version }}`, file bugs: {{ tracker }}
+###### `terraform-ci v{{ version }}`, file bugs: {{ tracker }}

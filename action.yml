@@ -5,10 +5,10 @@ inputs:
   terraform_version:
     description: "Terraform version, defaults to install latest"
     required: false
-    default: "latest"
+    default: ""
   terraform_host:
     description: "The hostname of a Terraform Cloud/Enterprise instance to place within the credentials block of the Terraform CLI configuration file. Defaults to `app.terraform.io`."
-    default: "app.terraform.io"
+    default: ""
     required: false
   terraform_token:
     description: "The API token for a Terraform Cloud/Enterprise instance to place within the credentials block of the Terraform CLI configuration file."
@@ -26,11 +26,11 @@ inputs:
     default: ""
     description: "Comma separated list of resource addresses to run `terraform import <addr> <id>`"
   working_directory:
-    default: "."
+    default: ""
     required: false
     description: "Github actions can't inherit working-directory. Set it here."
   mode:
-    default: "plan"
+    default: ""
     required: false
     description: "Plan or Apply mode. If plan, will update github job summary with results. If apply, will run on a tag and auto generate a release with results as the notes."
   create_release:
@@ -38,19 +38,19 @@ inputs:
     required: false
     description: "For applies, create a release with tag or sha (if configured for branch)"
   github_token:
-    default: "."
+    default: ""
     required: false
     description: "For applies, needed to update the releases after tagging"
   config:
     default: ""
     required: false
     description: |
-      Experimental - Github actions only supports string inputs, but if you format a yaml string, this action will parse it.  Direct variables will
+      Experimental - Github actions only supports string inputs, but if you format a yaml string, this action will parse it.  This config will
       take precedence.
 
       ```yaml
       with:
-        config:
+        config: |
           mode: plan
           workingDirectory: "."
           createRelease: false
@@ -63,8 +63,7 @@ inputs:
             token: "Please use env var"
           resources:
             import:
-              - address: |
-                  module.test["resource"]
+              - address: module.test["resource"]
                 id: "abcd123a"
             replace:
               - ""

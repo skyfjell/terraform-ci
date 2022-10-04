@@ -48,11 +48,10 @@ class TfCLI:
 
     @staticmethod
     def set_version(version: str | None = None) -> int:
-        """Sets the terraform version in the environment. Will fall back to 
-        env var `TF_VERSION`.
+        """Sets the terraform version in the environment.
         """
 
-        tf_version = get_env("TF_VERSION") or version or "latest"
+        tf_version = version or "latest"
 
         if tf_version == "latest":
             tf_version = "--latest"
@@ -64,13 +63,11 @@ class TfCLI:
     @staticmethod
     def set_token(host: str | None = "app.terraform.io", token: str | None = None) -> int:
 
-        tf_host = host or get_env("TF_TOKEN") or "app.terraform.io"
-        tf_token = token or get_env("TF_TOKEN")
-        if tf_token is None:
+        if token is None:
             return 0
 
         with open(os.path.join(os.path.expanduser('~'), ".terraformrc"), "w") as f:
-            f.write(_token_tpl(tf_host, tf_token))
+            f.write(_token_tpl(host or "app.terraform.io", token))
 
         print("Created .terraformrc file.")
 

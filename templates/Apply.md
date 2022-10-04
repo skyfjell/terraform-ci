@@ -1,4 +1,4 @@
-# Terraform CI Action[^1]
+# Terraform CI Action
 
 ## Terraform Plan
 
@@ -24,4 +24,4 @@
 
 </details>
 
-[^1]: `terraform-ci v{{ version }}`, file bugs: {{ tracker }}
+###### `terraform-ci v{{ version }}`, file bugs: {{ tracker }}

@@ -1,13 +1,13 @@
 import os
 import sys
-from checkov.main import run
 import json
 import jinja2
 import requests
+from subprocess import Popen
 
 from .parser import parse_tf_json, parse_tf_log, parse_tf_checkov, parse_tf_apply, parse_tf_apply_summary
 from .terraform import TfCLI
-from .config import get_env, ImportConfig, ActionSettings
+from .config import get_env, ActionSettings
 from . import __issues__, __version__
 
 
@@ -25,10 +25,14 @@ class ActionPipeline:
     scan_result = False
     apply_result = False
 
-    def __init__(self, settings: ActionSettings, hard_fail=True, temp_dir: str | None = None) -> None:
+    def __init__(self, settings: ActionSettings, hard_fail=False, temp_dir: str | None = None) -> None:
         self.hard_fail = hard_fail
-        self.temp_dir = temp_dir or get_env("TMP_DIR") or "/app"
+        self.temp_dir = "/app"
         self.settings = settings
+
+    @property
+    def template_result(self):
+        return os.path.join(self.temp_dir, "template_result.md")
 
     @property
     def bin_plan(self):
@@ -97,7 +101,7 @@ class ActionPipeline:
         """
         init_args = ["init"]
 
-        match self.settings.mode:
+        match self.settings.terraform.init_mode:
             case "migrate":
                 init_args += ["-migrate-state"]
             case "reconfigure":
@@ -147,17 +151,31 @@ class ActionPipeline:
     def _convert_plan(self):
         """Converts tf bin plan to json plan"""
         if not (self.plan_result and os.path.exists(self.bin_plan)):
-            return
+            print("::error title=Terraform Plan::Failed to convert terraform plan.")
+            return False
         with TfCLI("show", "-json", "-no-color", self.bin_plan, stdout=True) as cli:
             with open(self.json_plan, "w") as f:
-                cli()
-                json.dump(json.loads(cli.stdout), f)
+                if cli() == 0:
+                    json.dump(json.loads(cli.stdout), f)
+                    return True
+                else:
+                    print("::error title=Terraform Plan::Failed to convert terraform plan.")
+                    return False
 
     def scan(self) -> "ActionPipeline":
+        """While checkov runs on python, all implementations use it from the CLI.
+        Past experiments seem to show this is still the best result even over calling it natively.
+        """
         if not (self.plan_result and os.path.exists(self.json_plan)):
             return self
 
-        scan_result = run(argv=["--output-file-path", self.temp_dir, "-o", "json", "-f", self.json_plan]) == 0
+        proc = Popen(
+            ["checkov", "--output-file-path", self.temp_dir, "-o", "json", "-f", self.json_plan],
+            shell=False,
+        )
+        proc.communicate()
+
+        scan_result = int(proc.returncode) == 0
 
         with open(self.checkov) as f:
             result: dict | list[dict] = json.load(f)
@@ -180,19 +198,27 @@ class ActionPipeline:
         with TfCLI(*tf_args, with_shell=True) as cli:
             self.apply_result == cli() in [0, 2]
 
+        return self
+
     def report(self) -> "ActionPipeline":
         plan_markdown = "Error reading plan."
         if self.plan_result and os.path.exists(self.json_plan):
             plan_markdown = parse_tf_json(self.json_plan)
+        else:
+            print(f"::warning title=Terraform Plan::Error reading plan.")
 
         log_plan = "Error reading log."
         if self.plan_result and os.path.exists(self.log_plan):
             log_plan = parse_tf_log(self.log_plan)
+        else:
+            print(f"::warning title=Terraform Plan::Error reading summary.")
 
         if self.settings.mode == "plan":
             checkov_result = "Error loading checkov results."
             if self.scan_result and os.path.exists(self.checkov):
                 checkov_result = parse_tf_checkov(self.checkov)
+            else:
+                print(f"::warning title=Terraform Plan::Error reading summary.")
 
             template = self._plan_template().render(
                 fmt_check=icon(self.format_result),
@@ -200,7 +226,7 @@ class ActionPipeline:
                 plan_check=icon(self.plan_result),
                 scan_check=icon(self.scan_result),
                 plan_txt=plan_markdown,
-                summary_text=log_plan,
+                summary_txt=log_plan,
                 checkov_txt=checkov_result,
                 version=__version__,
                 tracker=__issues__,
@@ -227,7 +253,8 @@ class ActionPipeline:
                 except Exception as e:
                     print(f"::error title=Github Post::Failed to post release because: {e}.")
 
-        os.environ["GITHUB_STEP_SUMMARY"] += os.environ.get("GITHUB_STEP_SUMMARY", "") + template
+        with open(self.template_result, "w") as f:
+            f.write(template)
 
         return self
 

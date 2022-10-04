@@ -4,6 +4,33 @@ Runs Checkov on Terraform plans during pull requests and pretty prints output on
 
 ## Example Plan usage
 
+### Experimental config
+
+Work around with yaml strings for more complex config.
+
+```yaml
+uses: skyfjell/terraform-ci@latest
+with:
+  config: |
+    mode: plan
+    workingDirectory: "."
+    createRelease: false
+    terraform:
+      version: latest
+      host: app.terraform.io
+      token: "Please use env var"
+      initMode: upgrade
+    github:
+      token: "Please use env var"
+    resources:
+      import:
+        - address: |
+            module.test["resource"] # let us format the quotes
+          id: "abcd123a"
+      replace:
+        - ""
+```
+
 ```yaml
 uses: skyfjell/terraform-ci@latest
 with:

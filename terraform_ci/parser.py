@@ -79,7 +79,11 @@ def parse_tf_checkov(file: str) -> str:
             rec['resource_address'] = x.get('resource_address')
 
             records.append(rec)
-
+    if len(records) == 0:
+        records = {
+            "resource_address": [],
+            "check_id": []
+        }
     return pd.DataFrame(records).to_markdown(index=False)
 
 
