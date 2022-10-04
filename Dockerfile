@@ -1,6 +1,5 @@
-FROM ghcr.io/skyfjell/terraform-ci:tf-ci-0.0.2
+FROM ghcr.io/skyfjell/terraform-ci:tf-ci-0.0.3
 
 WORKDIR /app
-COPY main.sh /app/main.sh
-COPY main.py /app/main.py
-ENTRYPOINT [ "bash", "/app/main.sh"]
+COPY . .
+ENTRYPOINT [ "python", "-m", "action"]
