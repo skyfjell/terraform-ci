@@ -4,7 +4,6 @@ from .config import Settings
 
 if __name__ == "__main__":
     settings = Settings().config
-    print(settings)
 
     TfCLI.set_version(version=settings.terraform.version)
     TfCLI.set_token(host=settings.terraform.host, token=settings.terraform.token)
