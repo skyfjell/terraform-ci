@@ -1,7 +1,7 @@
 from subprocess import Popen, PIPE
 import os
 
-from .utils import get_env
+from .config import get_env
 
 
 def _token_tpl(h, t): return f"""
@@ -52,7 +52,7 @@ class TfCLI:
         env var `TF_VERSION`.
         """
 
-        tf_version = version or get_env("TF_VERSION") or "latest"
+        tf_version = get_env("TF_VERSION") or version or "latest"
 
         if tf_version == "latest":
             tf_version = "--latest"
