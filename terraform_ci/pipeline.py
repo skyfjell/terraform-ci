@@ -73,7 +73,9 @@ class ActionPipeline:
             ActionPipeline: Self for chaining.
         """
         with TfCLI("fmt", "-check", "-recursive") as cli:
-            self.format_result = cli() == 0
+            ret_code = cli()
+            self.format_result = ret_code == 0
+            print(f"::debug::Terraform fmt check result is {self.format_result} with return code {ret_code}")
 
         if self.hard_fail and not self.format_result:
             print("::error title=Terraform Format::Failed formatting check.")
@@ -90,9 +92,13 @@ class ActionPipeline:
 
         for resource in self.settings.resource.imports:
             with TfCLI("import", resource.address, resource.id) as cli:
-                success = cli() == 0
+                ret_code = cli()
+                success = ret_code == 0
                 if not success:
                     self.import_result = False
+                    print(
+                        f"::debug::Terraform import check result is {success} with return code {ret_code} for resource {resource.id}")
+
                 if self.hard_fail and not success:
                     print("::error title=Terraform Import::Failed to import.")
                     sys.exit(1)
@@ -119,7 +125,9 @@ class ActionPipeline:
                 sys.exit(1)
 
         with TfCLI(*init_args) as cli:
-            self.init_result = cli() == 0
+            ret_code = cli()
+            self.init_result = ret_code == 0
+            print(f"::debug::Terraform init check result is {self.init_result} with return code {ret_code}")
 
         if self.hard_fail and not self.init_result:
             print("::error title=Terraform Init::Failed terraform init.")
@@ -142,7 +150,9 @@ class ActionPipeline:
         tf_args += ["2>&1 | tee", self.log_plan]
 
         with TfCLI(*tf_args, with_shell=True) as cli:
-            self.plan_result = cli() in [0, 2]
+            ret_code = cli()
+            self.plan_result = ret_code in [0, 2]
+            print(f"::debug::Terraform plan check result is {self.plan_result} with return code {ret_code}")
 
         if self.hard_fail and not self.plan_result:
             print("::error title=Terraform Plan::Failed terraform plan.")
@@ -178,8 +188,8 @@ class ActionPipeline:
             shell=False,
         )
         proc.communicate()
-
-        scan_result = int(proc.returncode) == 0
+        ret_code = int(proc.returncode)
+        scan_result = ret_code == 0
 
         with open(self.checkov) as f:
             result: dict | list[dict] = json.load(f)
@@ -190,6 +200,7 @@ class ActionPipeline:
 
         # ensure checkov ran and no failures were found
         self.scan_result = scan_result and sum(int(x.get('summary', {'failed': 0})['failed']) for x in result) == 0
+        print(f"::debug::Checkov scan check result is {self.scan_result} with return code {ret_code}")
 
         return self
 
@@ -200,7 +211,9 @@ class ActionPipeline:
             "apply", "-auto-approve", "-no-color", "-json", self.bin_plan, "2>%1 | tee", self.apply_json
         ]
         with TfCLI(*tf_args, with_shell=True) as cli:
-            self.apply_result == cli() in [0, 2]
+            ret_code = cli()
+            self.apply_result == ret_code in [0, 2]
+            print(f"::debug::Terraform plan check result is {self.apply_result} with return code {ret_code}")
 
         return self
 
@@ -272,6 +285,7 @@ class ActionPipeline:
                 self.import_result,
                 self.scan_result,
             ]):
+                print(f"::debug::Exiting successfully with code 0")
                 sys.exit(0)
 
         else:
@@ -280,8 +294,9 @@ class ActionPipeline:
                 self.plan_result,
                 self.apply_result
             ]):
+                print(f"::debug::Exiting successfully with code 0")
                 sys.exit(0)
-
+        print(f"::debug::Exiting unsuccessfully with code 1")
         sys.exit(1)
 
     def _plan_template(self):
