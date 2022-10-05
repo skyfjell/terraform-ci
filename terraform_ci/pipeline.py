@@ -24,6 +24,8 @@ class ActionPipeline:
     plan_result = False
     scan_result = False
     apply_result = False
+    # Flag this false on a bad import
+    import_result = True
 
     def __init__(self, settings: ActionSettings, hard_fail=False, temp_dir: str | None = None) -> None:
         self.hard_fail = hard_fail
@@ -89,6 +91,8 @@ class ActionPipeline:
         for resource in self.settings.resource.imports:
             with TfCLI("import", resource.address, resource.id) as cli:
                 success = cli() == 0
+                if not success:
+                    self.import_result = False
                 if self.hard_fail and not success:
                     print("::error title=Terraform Import::Failed to import.")
                     sys.exit(1)
@@ -259,6 +263,27 @@ class ActionPipeline:
 
         return self
 
+    def cleanup(self):
+        """Final checks, returns exit code"""
+        if self.settings.mode == "plan":
+            if all([
+                self.init_result,
+                self.plan_result,
+                self.import_result,
+                self.scan_result,
+            ]):
+                sys.exit(0)
+
+        else:
+            if all([
+                self.init_result,
+                self.plan_result,
+                self.apply_result
+            ]):
+                sys.exit(0)
+
+        sys.exit(1)
+
     def _plan_template(self):
         with open(os.path.join(self.template_dir, "Plan.md")) as f:
             return jinja2.Environment().from_string(f.read())
@@ -266,15 +291,6 @@ class ActionPipeline:
     def _apply_template(self):
         with open(os.path.join(self.template_dir, "Apply.md")) as f:
             return jinja2.Environment().from_string(f.read())
-
-    def debug_report(self) -> "ActionPipeline":
-        results = {
-            "format": self.format_result,
-            "init": self.init_result,
-            "plan": self.plan_result,
-            "scan": self.scan_result
-        }
-        print(results)
 
     def post_apply_output(self, summary: str) -> bool:
         """Takes in the summary string formatted in markdown and 
@@ -316,6 +332,6 @@ class ActionPipeline:
         if response.status_code != 201:
             print(f"::error::could not create release because {response.text}")
             print(f"::error::{summary}")
-            return "failure"
+            return False
 
-        return "success"
+        return True

@@ -21,6 +21,7 @@ if __name__ == "__main__":
             .plan()
             .scan()
             .report()
+            .cleanup()
         )
     else:
         (
@@ -29,4 +30,5 @@ if __name__ == "__main__":
             .plan()
             .apply()
             .report()
+            .cleanup()
         )
