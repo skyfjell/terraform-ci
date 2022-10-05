@@ -219,7 +219,7 @@ class ActionPipeline:
 
         if self.settings.mode == "plan":
             checkov_result = "Error loading checkov results."
-            if self.scan_result and os.path.exists(self.checkov):
+            if os.path.exists(self.checkov):
                 checkov_result = parse_tf_checkov(self.checkov)
             else:
                 print(f"::warning title=Terraform Plan::Error reading summary.")
