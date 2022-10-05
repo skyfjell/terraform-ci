@@ -331,7 +331,6 @@ class ActionPipeline:
         # for some reason, no release is created then post as error message
         if response.status_code != 201:
             print(f"::error::could not create release because {response.text}")
-            print(f"::error::{summary}")
             return False
 
         return True
