@@ -234,7 +234,8 @@ class ActionPipeline:
         else:
             apply_check = "Error loading apply."
             apply_summary = "Error loading summary apply."
-            if self.apply_result and os.path.exists(self.apply_json):
+            # as long as json was emitted.
+            if os.path.exists(self.apply_json):
                 apply_check = parse_tf_apply(self.apply_json)
                 apply_summary = parse_tf_apply_summary(self.apply_json)
 

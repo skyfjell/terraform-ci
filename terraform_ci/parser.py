@@ -145,7 +145,7 @@ def parse_tf_apply(file: str) -> str:
 
 def parse_tf_apply_summary(file: str) -> str:
     """Parses the terraform apply json output and returns the raw output."""
-    data = pd.read_json(file, lines=True).to_dict('records')
+    data = _read_apply_log(file).to_dict('records')
 
     summary = [x["@message"] for x in data]
 
