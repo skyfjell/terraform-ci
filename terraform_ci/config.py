@@ -106,7 +106,7 @@ class ResourceConfig(BaseSchema):
 
 class ActionSettings(BaseSchema):
     mode: Literal["plan"] | Literal["apply"] = Field("plan")
-    working_directory: GithubStr = Field(".")
+    working_directory: GithubStr | None = Field(".")
     create_release: bool | GithubStr | None = Field(False)
     terraform: TerraformConfig
     github: GithubConfig
