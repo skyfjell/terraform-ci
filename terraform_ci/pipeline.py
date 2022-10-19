@@ -189,7 +189,7 @@ class ActionPipeline:
         )
         proc.communicate()
         ret_code = int(proc.returncode)
-        scan_result = ret_code == 0
+        scan_result = (ret_code == 0)
 
         with open(self.checkov) as f:
             result: dict | list[dict] = json.load(f)
@@ -206,14 +206,17 @@ class ActionPipeline:
 
     def apply(self) -> "ActionPipeline":
         if not (self.plan_result and os.path.exists(self.json_plan)):
+            print(f"::debug::Terraform apply check result could not find plan.")
             return self
+
         tf_args = [
             "apply", "-auto-approve", "-no-color", "-json", self.bin_plan, "2>%1 | tee", self.apply_json
         ]
+
         with TfCLI(*tf_args, with_shell=True) as cli:
             ret_code = cli()
-            self.apply_result == ret_code in [0, 2]
-            print(f"::debug::Terraform plan check result is {self.apply_result} with return code {ret_code}")
+            self.apply_result == (ret_code in [0, 2])
+            print(f"::debug::Terraform apply check result is {self.apply_result} with return code {ret_code}")
 
         return self
 
@@ -285,7 +288,7 @@ class ActionPipeline:
                 self.import_result,
                 self.scan_result,
             ]):
-                print(f"::debug::Exiting successfully with code 0")
+                print(f"::debug::Exiting plan mode successfully with code 0")
                 sys.exit(0)
 
         else:
@@ -294,9 +297,10 @@ class ActionPipeline:
                 self.plan_result,
                 self.apply_result
             ]):
-                print(f"::debug::Exiting successfully with code 0")
+                print(f"::debug::Exiting apply successfully with code 0")
                 sys.exit(0)
-        print(f"::debug::Exiting unsuccessfully with code 1")
+
+        print(f"::debug::Exiting {self.settings.mode} unsuccessfully with code 1")
         sys.exit(1)
 
     def _plan_template(self):

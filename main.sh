@@ -4,10 +4,11 @@ python -m terraform_ci
 
 RETURN_CODE=$?
 
-input=/app/template_result.md
 while IFS= read -r line
 do
     echo "$line" >> $GITHUB_STEP_SUMMARY
-done < "$input"
+done < /app/template_result.md
+
+echo "::debug::Python component return code is ${RETURN_CODE}"
 
 exit $RETURN_CODE
