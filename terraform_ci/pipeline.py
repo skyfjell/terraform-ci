@@ -215,7 +215,7 @@ class ActionPipeline:
 
         with TfCLI(*tf_args, with_shell=True) as cli:
             ret_code = cli()
-            self.apply_result == (ret_code in [0, 2])
+            self.apply_result = (ret_code in [0, 2])
             print(f"::debug::Terraform apply check result is {self.apply_result} with return code {ret_code}")
 
         return self
