@@ -222,13 +222,13 @@ class ActionPipeline:
 
     def report(self) -> "ActionPipeline":
         plan_markdown = "Error reading plan."
-        if self.plan_result and os.path.exists(self.json_plan):
+        if os.path.exists(self.json_plan):
             plan_markdown = parse_tf_json(self.json_plan)
         else:
             print(f"::warning title=Terraform Plan::Error reading plan.")
 
         log_plan = "Error reading log."
-        if self.plan_result and os.path.exists(self.log_plan):
+        if os.path.exists(self.log_plan):
             log_plan = parse_tf_log(self.log_plan)
         else:
             print(f"::warning title=Terraform Plan::Error reading summary.")
