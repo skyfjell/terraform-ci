@@ -28,8 +28,10 @@ class TfCLI:
     def __enter__(self, *_, **__):
         """Using context manager allows us to setup the cli args separately from
         running them."""
-
-        self.proc = Popen(self._command(), shell=self.with_shell, stdout=self.stdout_mode)
+        command = self._command()
+        print(f"::debug::Terraform command is `{command}`")
+        self.proc = Popen(self._command(), shell=self.with_shell, stdout=self.stdout_mode,
+                          executable="/bin/bash" if self.with_shell else None)
 
         return self
 
@@ -48,10 +50,7 @@ class TfCLI:
         Note: If attempting to run `self._noshell` command with a shell, the python subprocess
         will echo the environment out (bad).
         """
-        command = " ".join(["terraform"] + self.proc_args)
-        if self.pipefail:
-            command = ["/bin/bash", "-o", "pipefail", "-c", f"'{command}'"]
-        return command
+        return " ".join(["terraform"] + self.proc_args) + r"; exit ${PIPESTATUS[0]}"
 
     def _command(self):
         """Builds the intended command to be run"""
