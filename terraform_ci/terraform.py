@@ -14,11 +14,12 @@ credentials "{h}" {{
 class TfCLI:
     stdout = None
 
-    def __init__(self, *args, with_shell=False, stdout=False):
+    def __init__(self, *args, with_shell=False, stdout=False, pipefail=True):
         """Wrapper for terraform cli"""
         self.proc_args = list(args)
         self.proc: Popen[bytes] | None = None
         self.with_shell = with_shell
+        self.pipefail = pipefail
         if stdout:
             self.stdout_mode = PIPE
         else:
@@ -27,13 +28,34 @@ class TfCLI:
     def __enter__(self, *_, **__):
         """Using context manager allows us to setup the cli args separately from
         running them."""
-        if self.with_shell:
-            cmd = " ".join(["terraform"] + self.proc_args)
-            self.proc = Popen(cmd, shell=True, stdout=self.stdout_mode)
-        else:
-            cmd = ["terraform"] + self.proc_args
-            self.proc = Popen(cmd, shell=False, stdout=self.stdout_mode)
+
+        self.proc = Popen(self._command(), shell=self.with_shell, stdout=self.stdout_mode)
+
         return self
+
+    def _noshell(self):
+        """Structures the subprocess command for running with no shell. This will properly 
+        format the command if a pipefail flag is set."""
+        command = ["terraform"] + self.proc_args
+        if self.pipefail:
+            command = ["/bin/bash", "-c", "set -o pipefail;"] + command
+        return command
+
+    def _withshell(self):
+        """Structures the subprocess command for running with shell. This will properly
+        format the command if a pipefail flag is set.
+
+        Note: If attempting to run `self._noshell` command with a shell, the python subprocess
+        will echo the environment out (bad).
+        """
+        command = " ".join(["terraform"] + self.proc_args)
+        if self.pipefail:
+            command = ["/bin/bash", "-o", "pipefail", "-c", f"'{command}'"]
+        return command
+
+    def _command(self):
+        """Builds the intended command to be run"""
+        return self._withshell() if self.with_shell else self._noshell()
 
     def __exit__(self, *_, **__):
         pass
