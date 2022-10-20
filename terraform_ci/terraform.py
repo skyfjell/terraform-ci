@@ -14,7 +14,7 @@ credentials "{h}" {{
 class TfCLI:
     stdout = None
 
-    def __init__(self, *args, with_shell=False, stdout=False, pipefail=True):
+    def __init__(self, *args, with_shell=False, stdout=False, pipefail=False):
         """Wrapper for terraform cli"""
         self.proc_args = list(args)
         self.proc: Popen[bytes] | None = None
