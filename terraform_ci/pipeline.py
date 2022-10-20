@@ -149,7 +149,7 @@ class ActionPipeline:
 
         tf_args += ["2>&1 | tee", self.log_plan]
 
-        with TfCLI(*tf_args, with_shell=True) as cli:
+        with TfCLI(*tf_args, with_shell=True, pipefail=True) as cli:
             ret_code = cli()
             self.plan_result = ret_code in [0, 2]
             print(f"::debug::Terraform plan check result is {self.plan_result} with return code {ret_code}")
@@ -210,10 +210,10 @@ class ActionPipeline:
             return self
 
         tf_args = [
-            "apply", "-auto-approve", "-no-color", "-json", self.bin_plan, "2>%1 | tee", self.apply_json
+            "apply", "-auto-approve", "-no-color", "-json", self.bin_plan, "2>&1 | tee", self.apply_json
         ]
 
-        with TfCLI(*tf_args, with_shell=True) as cli:
+        with TfCLI(*tf_args, with_shell=True, pipefail=True) as cli:
             ret_code = cli()
             self.apply_result = (ret_code in [0, 2])
             print(f"::debug::Terraform apply check result is {self.apply_result} with return code {ret_code}")
