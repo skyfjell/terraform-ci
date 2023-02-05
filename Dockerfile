@@ -1,6 +1,3 @@
-FROM ghcr.io/skyfjell/terraform-ci:tf-ci-0.0.3
+FROM ghcr.io/skyfjell/terraform-ci:tf-ci-0.0.4
 
-WORKDIR /app
-COPY . .
-RUN python setup.py install
 ENTRYPOINT [ "bash", "/app/main.sh"]
