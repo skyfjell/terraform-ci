@@ -21,6 +21,6 @@ COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /usr/local/bin/tfswitch /usr/bin/tfswitch
 ENV PATH="/opt/venv/bin:$PATH:/home/ciuser/bin"
 COPY main.sh /app/main.sh
-COPY templates /app/templates
+ADD templates /app/templates
 
 USER ciuser
